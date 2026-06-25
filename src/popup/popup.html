@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestro</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="logo-row">
+        <span class="title">gestro</span>
+        <span class="badge" id="status-badge">off</span>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <!-- Status Section -->
+    <div class="status-section">
+      <div class="status-item">
+        <span class="status-label">camera</span>
+        <span class="status-value" id="camera-status">—</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">platform</span>
+        <span class="status-value" id="platform">—</span>
+      </div>
+      <div class="status-divider"></div>
+      <div class="status-item">
+        <span class="status-label">gesture</span>
+        <span class="status-value accent" id="current-gesture">—</span>
+      </div>
+    </div>
+
+    <!-- Gesture Reference -->
+    <div class="gesture-reference">
+      <div class="gesture-row">
+        <span class="finger-num">1</span>
+        <span class="finger-desc">finger</span>
+        <span class="finger-action">scroll down</span>
+      </div>
+      <div class="gesture-row">
+        <span class="finger-num">2</span>
+        <span class="finger-desc">fingers</span>
+        <span class="finger-action">scroll up</span>
+      </div>
+      <div class="gesture-row">
+        <span class="finger-num">3</span>
+        <span class="finger-desc">fingers</span>
+        <span class="finger-action">2× speed</span>
+      </div>
+      <div class="gesture-row">
+        <span class="finger-num">4</span>
+        <span class="finger-desc">fingers</span>
+        <span class="finger-action">pause / resume</span>
+      </div>
+      <div class="gesture-row">
+        <span class="finger-num">5</span>
+        <span class="finger-desc">fingers</span>
+        <span class="finger-action">quit</span>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <span class="version">v1.0.0</span>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

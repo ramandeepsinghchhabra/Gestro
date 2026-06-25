@@ -1,0 +1,24 @@
+{
+  "name": "gestro",
+  "version": "1.0.0",
+  "private": true,
+  "author": "Ramandeep Singh Chhabra",
+  "description": "Control YouTube Shorts, Instagram Reels, and TikTok with hand gestures.",
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "dev": "tsx scripts/build.ts --watch",
+    "download-models": "tsx scripts/download-models.ts",
+    "prebuild": "npm run download-models"
+  },
+  "dependencies": {
+    "@mediapipe/hands": "^0.4.1675469240",
+    "@mediapipe/tasks-vision": "^0.10.22"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.304",
+    "@types/node": "^25.9.2",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.8.3"
+  }
+}
