@@ -44,3 +44,18 @@ export function getFeedVideos(): HTMLVideoElement[] {
       return rectA.top - rectB.top || rectA.left - rectB.left;
     });
 }
+
+export function getMostVisibleVideo(videos: HTMLVideoElement[]): HTMLVideoElement | null {
+  let bestVideo: HTMLVideoElement | null = null;
+  let bestVisibility = 0;
+
+  for (const video of videos) {
+    const visibility = getViewportVisibility(video);
+    if (visibility > bestVisibility) {
+      bestVisibility = visibility;
+      bestVideo = video;
+    }
+  }
+
+  return bestVideo;
+}

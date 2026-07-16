@@ -1,8 +1,9 @@
 import { logger } from '../logger';
 import type { PlatformAdapter } from './index';
-import { getFeedVideos, getViewportVisibility } from './utils';
+import { BasePlatformAdapter } from './base-adapter';
+import { getFeedVideos } from './utils';
 
-export class TikTokAdapter implements PlatformAdapter {
+export class TikTokAdapter extends BasePlatformAdapter implements PlatformAdapter {
   readonly name = 'tiktok' as const;
 
   isActive(): boolean {
@@ -21,18 +22,7 @@ export class TikTokAdapter implements PlatformAdapter {
       }
 
       // Fallback: find most visible feed video in viewport
-      const allVideos = getFeedVideos();
-      let bestVideo: HTMLVideoElement | null = null;
-      let bestVisibility = 0;
-
-      for (const video of allVideos) {
-        const visibility = getViewportVisibility(video);
-        if (visibility > bestVisibility) {
-          bestVisibility = visibility;
-          bestVideo = video;
-        }
-      }
-      return bestVideo;
+      return this.getMostVisibleVideo(getFeedVideos());
     } catch (err) {
       logger.error('PLATFORM', 'TikTok getCurrentVideo failed:', String(err));
       return null;
@@ -40,69 +30,51 @@ export class TikTokAdapter implements PlatformAdapter {
   }
 
   next(): void {
-    try {
+    this.withErrorLog('TikTok next', () => {
       logger.info('ACTION', 'TikTok: Attempting next video');
       const videos = getFeedVideos();
-      let bestIdx = -1;
-      let bestVis = 0;
+      const activeVideo = this.getMostVisibleVideo(videos);
 
-      for (let i = 0; i < videos.length; i++) {
-        const vis = getViewportVisibility(videos[i]);
-        if (vis > bestVis) {
-          bestVis = vis;
-          bestIdx = i;
+      if (activeVideo) {
+        const nextIndex = videos.indexOf(activeVideo) + 1;
+        if (nextIndex < videos.length) {
+          logger.info('ACTION', 'TikTok: Scrolling to next video element');
+          videos[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
         }
-      }
-
-      if (bestIdx >= 0 && bestIdx < videos.length - 1) {
-        logger.info('ACTION', 'TikTok: Scrolling to next video element');
-        const targetVideo = videos[bestIdx + 1];
-        targetVideo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
       }
 
       logger.info('ACTION', 'TikTok: Fallback dispatching ArrowDown key');
       document.body.dispatchEvent(new KeyboardEvent('keydown', {
         key: 'ArrowDown', code: 'ArrowDown', keyCode: 40, bubbles: true, cancelable: true
       }));
-    } catch (err) {
-      logger.error('ERROR', 'TikTok next() failed:', String(err));
-    }
+    }, undefined);
   }
 
   previous(): void {
-    try {
+    this.withErrorLog('TikTok previous', () => {
       logger.info('ACTION', 'TikTok: Attempting previous video');
       const videos = getFeedVideos();
-      let bestIdx = -1;
-      let bestVis = 0;
+      const activeVideo = this.getMostVisibleVideo(videos);
 
-      for (let i = 0; i < videos.length; i++) {
-        const vis = getViewportVisibility(videos[i]);
-        if (vis > bestVis) {
-          bestVis = vis;
-          bestIdx = i;
+      if (activeVideo) {
+        const previousIndex = videos.indexOf(activeVideo) - 1;
+        if (previousIndex >= 0) {
+          logger.info('ACTION', 'TikTok: Scrolling to previous video element');
+          videos[previousIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
         }
-      }
-
-      if (bestIdx > 0) {
-        logger.info('ACTION', 'TikTok: Scrolling to previous video element');
-        const targetVideo = videos[bestIdx - 1];
-        targetVideo.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
       }
 
       logger.info('ACTION', 'TikTok: Fallback dispatching ArrowUp key');
       document.body.dispatchEvent(new KeyboardEvent('keydown', {
         key: 'ArrowUp', code: 'ArrowUp', keyCode: 38, bubbles: true, cancelable: true
       }));
-    } catch (err) {
-      logger.error('ERROR', 'TikTok previous() failed:', String(err));
-    }
+    }, undefined);
   }
 
   togglePause(): void {
-    try {
+    this.withErrorLog('TikTok togglePause', () => {
       const video = this.getCurrentVideo();
       if (!video) return;
 
@@ -113,29 +85,15 @@ export class TikTokAdapter implements PlatformAdapter {
         logger.info('ACTION', 'TikTok: Pausing video');
         video.pause();
       }
-    } catch (err) {
-      logger.error('ERROR', 'TikTok togglePause failed:', String(err));
-    }
+    }, undefined);
   }
 
   toggleSpeed(): void {
-    try {
+    this.withErrorLog('TikTok toggleSpeed', () => {
       const video = this.getCurrentVideo();
       if (!video) return;
-
-      const currentRate = video.playbackRate;
-      const isTwoX = Math.abs(currentRate - 2.0) < 0.25;
-
-      if (!isTwoX) {
-        video.playbackRate = 2.0;
-        logger.info('ACTION', 'TikTok: Speed 2x');
-      } else {
-        video.playbackRate = 1.0;
-        logger.info('ACTION', 'TikTok: Speed 1x');
-      }
-    } catch (err) {
-      logger.error('ERROR', 'TikTok toggleSpeed failed:', String(err));
-    }
+      this.togglePlaybackRate(video, 'TikTok');
+    }, undefined);
   }
 
   exit(): void {

@@ -1,7 +1,8 @@
 import { logger } from '../logger';
 import type { PlatformAdapter } from './index';
+import { BasePlatformAdapter } from './base-adapter';
 
-export class YouTubeAdapter implements PlatformAdapter {
+export class YouTubeAdapter extends BasePlatformAdapter implements PlatformAdapter {
   readonly name = 'youtube' as const;
 
   isActive(): boolean {
@@ -12,30 +13,16 @@ export class YouTubeAdapter implements PlatformAdapter {
   }
 
   getCurrentVideo(): HTMLVideoElement | null {
-    try {
-      const allVideos = document.querySelectorAll<HTMLVideoElement>('video');
-      
-      for (const video of allVideos) {
-        if (video.style.opacity === '0' || video.style.width === '1px') continue;
+    return this.withErrorLog('YouTube getCurrentVideo', () => {
+      const allVideos = Array.from(document.querySelectorAll<HTMLVideoElement>('video'))
+        .filter((video) => video.style.opacity !== '0' && video.style.width !== '1px');
 
-        const rect = video.getBoundingClientRect();
-        const center = rect.top + rect.height / 2;
-        
-        if (center > 0 && center < window.innerHeight && rect.height > 0) {
-          return video;
-        }
-      }
-
-      logger.warn('PLATFORM', 'No active YouTube video found in viewport');
-      return null;
-    } catch (err) {
-      logger.error('PLATFORM', 'Failed to get YouTube video:', String(err));
-      return null;
-    }
+      return this.getMostVisibleVideo(allVideos);
+    }, null);
   }
 
   next(): void {
-    try {
+    this.withErrorLog('YouTube next', () => {
       logger.info('ACTION', 'YouTube: Attempting next video');
       const downBtn = document.querySelector<HTMLElement>('#navigation-button-down button, #navigation-button-down yt-button-shape, #navigation-button-down yt-icon-button, [aria-label="Next video"]');
       if (downBtn) {
@@ -51,13 +38,11 @@ export class YouTubeAdapter implements PlatformAdapter {
       document.dispatchEvent(new KeyboardEvent('keydown', {
         key: 'ArrowDown', keyCode: 40, code: 'ArrowDown', bubbles: true, cancelable: true
       }));
-    } catch (err) {
-      logger.error('ERROR', 'YouTube next() failed:', String(err));
-    }
+    }, undefined);
   }
 
   previous(): void {
-    try {
+    this.withErrorLog('YouTube previous', () => {
       logger.info('ACTION', 'YouTube: Attempting previous video');
       const upBtn = document.querySelector<HTMLElement>('#navigation-button-up button, #navigation-button-up yt-button-shape, #navigation-button-up yt-icon-button, [aria-label="Previous video"]');
       if (upBtn) {
@@ -73,13 +58,11 @@ export class YouTubeAdapter implements PlatformAdapter {
       document.dispatchEvent(new KeyboardEvent('keydown', {
         key: 'ArrowUp', keyCode: 38, code: 'ArrowUp', bubbles: true, cancelable: true
       }));
-    } catch (err) {
-      logger.error('ERROR', 'YouTube previous() failed:', String(err));
-    }
+    }, undefined);
   }
 
   togglePause(): void {
-    try {
+    this.withErrorLog('YouTube togglePause', () => {
       const video = this.getCurrentVideo();
       if (!video) {
         logger.warn('ACTION', 'YouTube Cannot toggle pause: no video found');
@@ -95,26 +78,15 @@ export class YouTubeAdapter implements PlatformAdapter {
         logger.info('ACTION', 'YouTube: Pausing video');
         video.pause();
       }
-    } catch (err) {
-      logger.error('ERROR', 'YouTube togglePause() failed:', String(err));
-    }
+    }, undefined);
   }
 
   toggleSpeed(): void {
-    try {
+    this.withErrorLog('YouTube toggleSpeed', () => {
       const video = this.getCurrentVideo();
       if (!video) return;
-      
-      if (video.playbackRate === 1.0) {
-        video.playbackRate = 2.0;
-        logger.info('ACTION', 'YouTube: Speed 2x');
-      } else {
-        video.playbackRate = 1.0;
-        logger.info('ACTION', 'YouTube: Speed 1x');
-      }
-    } catch (err) {
-      logger.error('ERROR', 'YouTube toggleSpeed() failed:', String(err));
-    }
+      this.togglePlaybackRate(video, 'YouTube');
+    }, undefined);
   }
 
   exit(): void {

@@ -56,8 +56,10 @@ export class GestureStateMachine {
         return this.handleTriggered(timestamp);
       case 'COOLDOWN':
         return this.handleCooldown(timestamp);
-      default:
-        return this.assertUnreachable(this.state);
+      default: {
+        const _exhaustive: never = this.state;
+        return this.assertUnreachable(_exhaustive);
+      }
     }
   }
 
