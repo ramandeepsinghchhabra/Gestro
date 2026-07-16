@@ -19,7 +19,7 @@ export interface RecognitionResult {
   reason?: 'LOW_LIGHT' | 'THUMB';
 }
 
-interface LandmarkPoint {
+export interface LandmarkPoint {
   x: number;
   y: number;
   z: number;
@@ -31,7 +31,6 @@ const WRIST = 0;
 const THUMB_TIP = 4;
 const THUMB_MCP = 2;
 const INDEX_MCP = 5;
-const INDEX_PIP = 6;
 const INDEX_TIP = 8;
 const MIDDLE_MCP = 9;
 const MIDDLE_PIP = 10;
@@ -119,6 +118,7 @@ export class GestureRecognizer {
     let minY = Infinity;
     for (let i = THUMB_TIP + 1; i < lm.length; i++) {
       const point = lm[i];
+      if (!point) continue;
       if (point.y < minY) minY = point.y;
     }
     if (indexTip.y - minY > HIGHEST_POINT_TOLERANCE) return false;

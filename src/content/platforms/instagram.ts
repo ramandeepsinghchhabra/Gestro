@@ -26,9 +26,10 @@ export class InstagramAdapter extends BasePlatformAdapter implements PlatformAda
 
       if (activeVideo) {
         const nextIndex = videos.indexOf(activeVideo) + 1;
-        if (nextIndex < videos.length) {
+        const nextVideo = videos[nextIndex];
+        if (nextVideo) {
           logger.info('ACTION', 'Instagram: Scrolling to next video element');
-          videos[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          nextVideo.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
       }
@@ -48,9 +49,10 @@ export class InstagramAdapter extends BasePlatformAdapter implements PlatformAda
 
       if (activeVideo) {
         const previousIndex = videos.indexOf(activeVideo) - 1;
-        if (previousIndex >= 0) {
+        const previousVideo = videos[previousIndex];
+        if (previousVideo) {
           logger.info('ACTION', 'Instagram: Scrolling to previous video element');
-          videos[previousIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          previousVideo.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
       }

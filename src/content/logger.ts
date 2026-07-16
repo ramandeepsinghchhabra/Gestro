@@ -1,4 +1,4 @@
-export type LogTag = 'INIT' | 'MODEL' | 'CAMERA' | 'GESTURE' | 'ACTION' | 'ERROR' | 'CLEANUP' | 'PLATFORM';
+export type LogTag = 'INIT' | 'MODEL' | 'CAMERA' | 'START' | 'STOP' | 'GESTURE' | 'ACTION' | 'ERROR' | 'CLEANUP' | 'PLATFORM';
 
 class Logger {
   private debug = false;

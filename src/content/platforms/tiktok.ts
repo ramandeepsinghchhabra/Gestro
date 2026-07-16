@@ -37,9 +37,10 @@ export class TikTokAdapter extends BasePlatformAdapter implements PlatformAdapte
 
       if (activeVideo) {
         const nextIndex = videos.indexOf(activeVideo) + 1;
-        if (nextIndex < videos.length) {
+        const nextVideo = videos[nextIndex];
+        if (nextVideo) {
           logger.info('ACTION', 'TikTok: Scrolling to next video element');
-          videos[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          nextVideo.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
       }
@@ -59,9 +60,10 @@ export class TikTokAdapter extends BasePlatformAdapter implements PlatformAdapte
 
       if (activeVideo) {
         const previousIndex = videos.indexOf(activeVideo) - 1;
-        if (previousIndex >= 0) {
+        const previousVideo = videos[previousIndex];
+        if (previousVideo) {
           logger.info('ACTION', 'TikTok: Scrolling to previous video element');
-          videos[previousIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+          previousVideo.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
       }

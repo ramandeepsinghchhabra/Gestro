@@ -8,7 +8,6 @@
  * Error:      Dot, red
  */
 
-import { logger } from './logger';
 import type { FSMState } from './state-machine';
 import type { Gesture } from './recognizer';
 

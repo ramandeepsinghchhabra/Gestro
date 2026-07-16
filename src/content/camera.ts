@@ -130,7 +130,10 @@ function getFrameBrightness(video: HTMLVideoElement, canvas: HTMLCanvasElement):
     let pixels = 0;
 
     for (let i = 0; i < imageData.length; i += 4) {
-      total += 0.299 * imageData[i] + 0.587 * imageData[i + 1] + 0.114 * imageData[i + 2];
+      const r = imageData[i] as number;
+      const g = imageData[i + 1] as number;
+      const b = imageData[i + 2] as number;
+      total += 0.299 * r + 0.587 * g + 0.114 * b;
       pixels += 1;
     }
 

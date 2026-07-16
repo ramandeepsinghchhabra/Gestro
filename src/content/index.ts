@@ -16,6 +16,11 @@ let hud: HUD | null = null;
 const recognizer = new GestureRecognizer();
 const fsm = new GestureStateMachine();
 
+const SPA_RESTART_DELAY_MS = 800;
+const SPA_RECOVERY_RETRY_MS = 3500;
+let spaRestartTimeout: number | null = null;
+let spaRecoveryTimeout: number | null = null;
+
 function sendStatusUpdate(): void {
   chrome.runtime.sendMessage({
     type: 'EXTENSION_STATUS_UPDATE',
@@ -153,7 +158,10 @@ function disable() {
 }
 
 // Ensure full cleanup if the window unloads
-window.addEventListener('beforeunload', disable);
+window.addEventListener('beforeunload', () => {
+  disable();
+  destroyMediaPipe();
+});
 
 // Listen for toggle from popup via background
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -177,21 +185,38 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
 
 // Watch for SPA navigation via our custom history patch (from platforms/index.ts)
 window.addEventListener('gesture:urlchange', () => {
-  if (enabled) {
-    logger.info('INIT', 'SPA Navigation detected, restarting extension safely...');
-    disable();
-    // Small delay to allow framework hydration to finish removing old DOM
-    setTimeout(() => {
-      // Re-check enabled state in case user turned it off during navigation
-      chrome.storage.local.get('enabled').then((res) => {
-        if (res.enabled) enable();
-      });
-    }, 800);
-  }
+  chrome.storage.local.get('enabled').then((res) => {
+    if (res.enabled) {
+      logger.info('INIT', 'SPA Navigation detected, restarting extension safely...');
+      disable();
+
+      if (spaRestartTimeout !== null) {
+        window.clearTimeout(spaRestartTimeout);
+      }
+      if (spaRecoveryTimeout !== null) {
+        window.clearTimeout(spaRecoveryTimeout);
+      }
+
+      spaRestartTimeout = window.setTimeout(() => {
+        chrome.storage.local.get('enabled').then((state) => {
+          if (state.enabled) {
+            enable();
+            spaRecoveryTimeout = window.setTimeout(() => {
+              if (enabled && !running && !starting) {
+                logger.warn('INIT', 'SPA restart did not complete, retrying enable()');
+                enable();
+              }
+            }, SPA_RECOVERY_RETRY_MS);
+          }
+        });
+      }, SPA_RESTART_DELAY_MS);
+    }
+  }).catch(() => {});
 });
 
 // Read saved state on initial page load
 async function init() {
+  installSPAWatcher();
   await logger.initialize();
   const result = await chrome.storage.local.get('enabled');
   enabled = result.enabled === true;
