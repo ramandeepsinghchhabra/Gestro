@@ -2,8 +2,8 @@
  * Gesture Recognizer — classifies hand landmarks into 5 gestures.
  *
  * ☝️  1 finger  (index up, others curled)         → NEXT
- * ✌️  2 fingers (index + middle up)                → PREV
- * 🤟 3 fingers (index + middle + ring up)          → SPEED (2x toggle)
+ * ✌️  2 fingers (index + middle up, thumb down)   → PREV
+ * 🤟 3 fingers (index + middle + ring up, thumb down) → SPEED (2x toggle)
  * 4️⃣  4 fingers (all except thumb)                 → PAUSE / RESUME
  * 🖐  5 fingers (full open palm)                   → EXIT
  *
@@ -113,7 +113,9 @@ export class GestureRecognizer {
     return true;
   }
 
-  // ── 2 Fingers: Index + middle up, ring + pinky curled ──
+  // ── 2 Fingers: Index + middle up, ring + pinky curled, thumb must remain down ──
+  // Thumb extension on two-finger gestures is intentionally rejected so PREV stays
+  // distinct from a partial open palm and does not overlap with 4/5 finger shapes.
   private isTwoFingersUp(lm: LandmarkPoint[]): boolean {
     if (!this.isExtended(lm, INDEX_TIP, INDEX_MCP)) return false;
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
@@ -125,7 +127,9 @@ export class GestureRecognizer {
     return true;
   }
 
-  // ── 3 Fingers: Index + middle + ring up, pinky curled ──
+  // ── 3 Fingers: Index + middle + ring up, pinky curled, thumb must remain down ──
+  // Thumb extension is rejected here as well so SPEED remains a clearly defined
+  // mid-palm gesture rather than a partial four-finger/open-palm shape.
   private isThreeFingersUp(lm: LandmarkPoint[]): boolean {
     if (!this.isExtended(lm, INDEX_TIP, INDEX_MCP)) return false;
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
@@ -185,6 +189,16 @@ export class GestureRecognizer {
 
     const wristToTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
     const wristToMcp = Math.hypot(mcp.x - wrist.x, mcp.y - wrist.y);
-    return wristToTip > wristToMcp + EXTENSION_MARGIN;
+
+    // Require the thumb tip to be sufficiently beyond the base of the thumb,
+    // and also to be oriented away from the wrist in a way consistent with
+    // an actually extended thumb rather than a folded palm.
+    const thumbVector = { x: tip.x - mcp.x, y: tip.y - mcp.y };
+    const baseVector = { x: mcp.x - wrist.x, y: mcp.y - wrist.y };
+    const dotProduct = thumbVector.x * baseVector.x + thumbVector.y * baseVector.y;
+    const isAligned = dotProduct > 0;
+    const hasSecondaryExtension = Math.abs(tip.x - mcp.x) > EXTENSION_MARGIN || (mcp.y - tip.y) > EXTENSION_MARGIN;
+
+    return wristToTip > wristToMcp + EXTENSION_MARGIN && isAligned && hasSecondaryExtension;
   }
 }
