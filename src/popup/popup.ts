@@ -4,9 +4,18 @@ const platformEl = document.getElementById('platform') as HTMLElement
 const cameraStatus = document.getElementById('camera-status') as HTMLElement
 const gestureDisplay = document.getElementById('current-gesture') as HTMLElement
 
+let currentPlatform = 'not supported'
+
+type PopupState = {
+  platform: string
+  enabled: boolean
+  camera: string
+  gesture: string
+}
+
 function getPlatform(url: string): string {
-  if (url.includes('youtube.com/shorts')) return 'youtube shorts'
-  if (url.includes('instagram.com/reel')) return 'instagram reels'
+  if (url.includes('youtube.com')) return 'youtube'
+  if (url.includes('instagram.com')) return 'instagram'
   if (url.includes('tiktok.com')) return 'tiktok'
   return 'not supported'
 }
@@ -17,56 +26,100 @@ function setBadge(state: 'on' | 'off' | 'error'): void {
   badge.textContent = state
 }
 
-async function queryState(): Promise<{ platform: string; enabled: boolean }> {
+async function queryState(): Promise<PopupState> {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true })
   const url = tab?.url ?? ''
   const platform = getPlatform(url)
+  currentPlatform = platform
 
-  const res = await chrome.runtime.sendMessage({ type: 'GET_ENABLED' }).catch(() => ({ enabled: false }))
-  const enabled = res?.enabled ?? false
+  const enabledRes = await chrome.runtime.sendMessage({ type: 'GET_ENABLED' }).catch(() => ({ enabled: false }))
+  const enabled = enabledRes?.enabled ?? false
 
-  return { platform, enabled }
+  let camera = '—'
+  let gesture = '—'
+
+  if (platform === 'not supported') {
+    camera = 'not supported'
+  } else {
+    const tabStatus = tab?.id
+      ? await chrome.tabs.sendMessage(tab.id, { type: 'GET_EXTENSION_STATUS' }).catch(() => null)
+      : null
+
+    if (tabStatus && typeof tabStatus === 'object') {
+      if (tabStatus.running) {
+        camera = 'running'
+        gesture = 'listening...'
+      } else if (tabStatus.starting) {
+        camera = 'starting...'
+      } else if (enabled) {
+        camera = 'requested'
+      } else {
+        camera = 'off'
+      }
+    } else if (enabled) {
+      camera = 'requested'
+      gesture = 'listening...'
+    } else {
+      camera = 'off'
+    }
+  }
+
+  return { platform, enabled, camera, gesture }
 }
 
 async function init(): Promise<void> {
-  const { platform, enabled } = await queryState()
+  const { platform, enabled, camera, gesture } = await queryState()
 
   toggle.checked = enabled
-  setBadge(enabled ? 'on' : 'off')
+  setBadge(enabled && platform !== 'not supported' ? 'on' : 'off')
   platformEl.textContent = platform
+  cameraStatus.textContent = camera
+  gestureDisplay.textContent = gesture
 
-  if (platform === 'not supported') {
-    cameraStatus.textContent = '—'
-    gestureDisplay.textContent = '—'
-  } else if (enabled) {
-    cameraStatus.textContent = 'starting...'
-    gestureDisplay.textContent = 'listening...'
+  if (platform !== 'not supported') {
+    startStatusPolling()
   } else {
-    cameraStatus.textContent = 'off'
-    gestureDisplay.textContent = '—'
+    stopStatusPolling()
+  }
+}
+
+let pollInterval: number | null = null
+
+function startStatusPolling(): void {
+  stopStatusPolling()
+  pollInterval = window.setInterval(async () => {
+    await init()
+  }, 1000)
+}
+
+function stopStatusPolling(): void {
+  if (pollInterval !== null) {
+    window.clearInterval(pollInterval)
+    pollInterval = null
   }
 }
 
 toggle.addEventListener('change', async () => {
   const enabled = toggle.checked
 
-  if (enabled) {
-    setBadge('on')
-    cameraStatus.textContent = 'starting...'
-  } else {
+  if (enabled && currentPlatform === 'not supported') {
+    toggle.checked = false
     setBadge('off')
+    cameraStatus.textContent = 'not supported'
+    gestureDisplay.textContent = '—'
+    return
+  }
+
+  setBadge(enabled ? 'on' : 'off')
+  if (enabled) {
+    cameraStatus.textContent = 'requested'
+    gestureDisplay.textContent = 'listening...'
+  } else {
     cameraStatus.textContent = 'off'
     gestureDisplay.textContent = '—'
   }
 
   await chrome.runtime.sendMessage({ type: 'SET_ENABLED', enabled }).catch(() => {})
-
-  // After the message, the content script starts/stops the camera.
-  // We'll update UI optimistically. Reality syncs on next popup open.
-  if (enabled) {
-    cameraStatus.textContent = 'requested'
-    gestureDisplay.textContent = 'listening...'
-  }
 })
 
 init()

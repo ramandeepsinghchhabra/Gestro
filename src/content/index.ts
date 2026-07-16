@@ -110,11 +110,15 @@ function disable() {
 window.addEventListener('beforeunload', disable);
 
 // Listen for toggle from popup via background
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === 'EXTENSION_TOGGLE') {
     enabled = msg.enabled;
     if (enabled) enable();
     else disable();
+  }
+
+  if (msg.type === 'GET_EXTENSION_STATUS') {
+    sendResponse({ running, starting, enabled });
   }
 });
 
