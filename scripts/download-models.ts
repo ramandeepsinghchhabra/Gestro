@@ -34,12 +34,14 @@ if (typeof window !== 'undefined') {
 
   if (existsSync(wasmBin)) {
     const contents = readFileSync(wasmBin, 'utf8');
+    // Idempotent patch: only append the loader fix if it is not already present.
     if (!contents.includes('window.createMediapipeSolutionsWasm = createMediapipeSolutionsWasm')) {
       appendFileSync(wasmBin, patchScript);
     }
   }
   if (existsSync(simdWasmBin)) {
     const contents = readFileSync(simdWasmBin, 'utf8');
+    // Idempotent patch: only append the loader fix if it is not already present.
     if (!contents.includes('window.createMediapipeSolutionsSimdWasm = createMediapipeSolutionsSimdWasm')) {
       appendFileSync(simdWasmBin, patchScript);
     }

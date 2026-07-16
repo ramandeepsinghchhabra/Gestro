@@ -2,12 +2,19 @@ import { logger } from './logger';
 import { initMediaPipe, predict } from './mediapipe';
 import type { LandmarkPoint } from './recognizer';
 
-export type HandResultCallback = (landmarks: LandmarkPoint[] | null) => void;
+export interface HandResult {
+  landmarks: LandmarkPoint[] | null;
+  brightness: number | null;
+}
+
+export type HandResultCallback = (result: HandResult) => void;
 
 let stream: MediaStream | null = null;
 let animationId: number | null = null;
 let isRunning = false;
 let hiddenVideo: HTMLVideoElement | null = null;
+let brightnessCanvas: HTMLCanvasElement | null = null;
+let latestBrightness: number | null = null;
 let loadedDataListener: (() => void) | null = null;
 let currentOnResult: HandResultCallback | null = null;
 
@@ -45,6 +52,9 @@ export async function startCamera(onResult: HandResultCallback): Promise<void> {
     
     stream = newStream;
     logger.info('CAMERA', 'Stream acquired:', stream.id);
+    brightnessCanvas = document.createElement('canvas');
+    brightnessCanvas.width = 16;
+    brightnessCanvas.height = 16;
   } catch (err: any) {
     isRunning = false;
     logger.error('ERROR', 'Failed to get user media:', err.name, err.message);
@@ -54,7 +64,11 @@ export async function startCamera(onResult: HandResultCallback): Promise<void> {
   }
 
   try {
-    await initMediaPipe(onResult);
+    const internalOnResult = (landmarks: LandmarkPoint[] | null) => {
+      currentOnResult?.({ landmarks, brightness: latestBrightness });
+    };
+
+    await initMediaPipe(internalOnResult);
     if (!isRunning) {
       logger.info('CLEANUP', 'Camera stopped during model load. Aborting loop start.');
       return;
@@ -99,7 +113,31 @@ export function stopCamera(): void {
     logger.info('CLEANUP', 'Video element removed');
   }
 
+  brightnessCanvas = null;
+  latestBrightness = null;
+
   logger.info('STOP', 'Camera stopped completely');
+}
+
+function getFrameBrightness(video: HTMLVideoElement, canvas: HTMLCanvasElement): number | null {
+  try {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    let total = 0;
+    let pixels = 0;
+
+    for (let i = 0; i < imageData.length; i += 4) {
+      total += 0.299 * imageData[i] + 0.587 * imageData[i + 1] + 0.114 * imageData[i + 2];
+      pixels += 1;
+    }
+
+    return pixels === 0 ? null : total / pixels / 255;
+  } catch {
+    return null;
+  }
 }
 
 function startLoop(): void {
@@ -134,6 +172,10 @@ function startLoop(): void {
       if (deltaTime >= FRAME_MIN_TIME) {
         lastTime = time - (deltaTime % FRAME_MIN_TIME);
         
+        if (brightnessCanvas && frameCount % 3 === 0) {
+          latestBrightness = getFrameBrightness(hiddenVideo, brightnessCanvas);
+        }
+
         try {
           // Direct video passing! No more canvas copy overhead!
           await predict(hiddenVideo);

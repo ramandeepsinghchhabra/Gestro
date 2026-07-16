@@ -123,7 +123,7 @@ export class HUD {
       case 'NEXT': return '▲ NEXT';
       case 'PREV': return '▼ PREV';
       case 'PAUSE': return '⏸ PAUSE';
-      case 'SPEED': return '⚡ 2X SPEED';
+      case 'SPEED': return '⚡ SPEED';
       case 'EXIT': return '👋 EXIT';
       case 'NONE': return '';
       default:

@@ -21,6 +21,9 @@ async function build(): Promise<void> {
   mkdirSync(dist, { recursive: true });
 
   // 1. Content script (IIFE — no ES modules in content scripts)
+  // We intentionally keep production bundles readable for this open source
+  // extension. No minification, and inline sourcemaps are enabled so shipped
+  // output can still be inspected during debugging.
   console.log('  [1/3] Bundling content script...');
   await esbuild.build({
     entryPoints: [resolve(root, 'src/content/index.ts')],
@@ -38,6 +41,7 @@ async function build(): Promise<void> {
   });
 
   // 2. Background service worker (IIFE)
+  // Keep the background bundle readable for easier review and debugging.
   console.log('  [2/3] Bundling background service worker...');
   await esbuild.build({
     entryPoints: [resolve(root, 'src/background/service-worker.ts')],
@@ -51,6 +55,8 @@ async function build(): Promise<void> {
   });
 
   // 3. Popup script (IIFE)
+  // The popup is shipped in readable form so reviewers and users can inspect
+  // the final bundle without needing a separate source map step.
   console.log('  [3/3] Bundling popup...');
   await esbuild.build({
     entryPoints: [resolve(root, 'src/popup/popup.ts')],

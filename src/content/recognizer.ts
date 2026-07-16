@@ -16,6 +16,7 @@ export type Gesture = 'PAUSE' | 'NEXT' | 'PREV' | 'SPEED' | 'EXIT' | 'NONE';
 export interface RecognitionResult {
   gesture: Gesture;
   confidence: number;
+  reason?: 'LOW_LIGHT' | 'THUMB';
 }
 
 interface LandmarkPoint {
@@ -47,11 +48,15 @@ const EXTENSION_MARGIN = 0.05;       // Tip must be > this above MCP to count as
 const INDEX_POINT_MARGIN = 0.10;     // Index pointing margin (stricter for 1-finger)
 const CURL_MARGIN = 0.04;            // Tip must be > this below PIP to count as curled
 const HIGHEST_POINT_TOLERANCE = 0.03;
+const LOW_LIGHT_THRESHOLD = 0.18;    // Frame brightness below this is considered dim.
 
 export class GestureRecognizer {
 
-  recognize(landmarks: LandmarkPoint[]): RecognitionResult {
+  recognize(landmarks: LandmarkPoint[], brightness: number | null): RecognitionResult {
     if (landmarks.length < 21) {
+      if (brightness !== null && brightness < LOW_LIGHT_THRESHOLD) {
+        return { gesture: 'NONE', confidence: 0, reason: 'LOW_LIGHT' };
+      }
       return { gesture: 'NONE', confidence: 0 };
     }
 
@@ -76,6 +81,14 @@ export class GestureRecognizer {
 
     if (this.isFiveFingersUp(landmarks)) {
       return { gesture: 'EXIT', confidence: 0.90 };
+    }
+
+    if (this.hasThumbMismatch(landmarks)) {
+      return { gesture: 'NONE', confidence: 0, reason: 'THUMB' };
+    }
+
+    if (brightness !== null && brightness < LOW_LIGHT_THRESHOLD) {
+      return { gesture: 'NONE', confidence: 0, reason: 'LOW_LIGHT' };
     }
 
     return { gesture: 'NONE', confidence: 0 };
@@ -163,6 +176,45 @@ export class GestureRecognizer {
     if (!this.isExtended(lm, PINKY_TIP, PINKY_MCP)) return false;
 
     return true;
+  }
+
+  private hasThumbMismatch(lm: LandmarkPoint[]): boolean {
+    return this.isOneFingerThumbMismatch(lm)
+      || this.isTwoFingersThumbMismatch(lm)
+      || this.isThreeFingersThumbMismatch(lm)
+      || this.isFiveFingersThumbMismatch(lm);
+  }
+
+  private isOneFingerThumbMismatch(lm: LandmarkPoint[]): boolean {
+    return this.isExtended(lm, INDEX_TIP, INDEX_MCP)
+      && this.isCurled(lm, MIDDLE_TIP, MIDDLE_PIP)
+      && this.isCurled(lm, RING_TIP, RING_PIP)
+      && this.isCurled(lm, PINKY_TIP, PINKY_PIP)
+      && this.isThumbExtended(lm);
+  }
+
+  private isTwoFingersThumbMismatch(lm: LandmarkPoint[]): boolean {
+    return this.isExtended(lm, INDEX_TIP, INDEX_MCP)
+      && this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)
+      && this.isCurled(lm, RING_TIP, RING_PIP)
+      && this.isCurled(lm, PINKY_TIP, PINKY_PIP)
+      && this.isThumbExtended(lm);
+  }
+
+  private isThreeFingersThumbMismatch(lm: LandmarkPoint[]): boolean {
+    return this.isExtended(lm, INDEX_TIP, INDEX_MCP)
+      && this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)
+      && this.isExtended(lm, RING_TIP, RING_MCP)
+      && this.isCurled(lm, PINKY_TIP, PINKY_PIP)
+      && this.isThumbExtended(lm);
+  }
+
+  private isFiveFingersThumbMismatch(lm: LandmarkPoint[]): boolean {
+    return !this.isThumbExtended(lm)
+      && this.isExtended(lm, INDEX_TIP, INDEX_MCP)
+      && this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)
+      && this.isExtended(lm, RING_TIP, RING_MCP)
+      && this.isExtended(lm, PINKY_TIP, PINKY_MCP);
   }
 
   // ── Helpers ──

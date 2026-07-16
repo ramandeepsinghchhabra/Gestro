@@ -20,12 +20,15 @@ export interface FSMOutput {
 }
 
 // ── Timing constants ──
-const CONFIRM_FRAMES = 6;              // 6 consecutive frames required (prevents misfires)
-const PAUSE_HOLD_MS = 700;             // Open palm hold for 700ms
-const PAUSE_COOLDOWN_MS = 1200;        // Cooldown for pause
-const SWIPE_COOLDOWN_MS = 1200;        // Cooldown for next/prev
-const EXIT_HOLD_MS = 3000;             // Open palm must be held 3s to exit
-const EXIT_COOLDOWN_MS = 3000;         // Long cooldown after exit
+export const CONFIRM_FRAMES = 6;              // 6 consecutive frames required (prevents misfires)
+export const RAPID_CONFIRM_FRAMES = 4;        // Shorter confirm window for rapid fire gestures
+const PAUSE_HOLD_MS = 700;                    // Open palm hold for 700ms
+const PAUSE_COOLDOWN_MS = 1200;               // Cooldown for pause
+export const SWIPE_COOLDOWN_MS = 1200;        // Cooldown for next/prev
+export const RAPID_SWIPE_COOLDOWN_MS = 800;   // Reduced cooldown for rapid gesture sequences
+export const RAPID_FIRE_WINDOW_MS = 2000;     // When repeated gestures happen within this window
+const EXIT_HOLD_MS = 3000;                    // Open palm must be held 3s to exit
+const EXIT_COOLDOWN_MS = 3000;                // Long cooldown after exit
 const HAND_ABSENT_TIMEOUT_MS = 3000;
 
 export class GestureStateMachine {
@@ -36,6 +39,7 @@ export class GestureStateMachine {
   private cooldownStartTime = 0;
   private cooldownDuration = 0;
   private lastHandSeenTime = -1;
+  private lastTriggerTime = -1;
 
   update(gesture: Gesture, timestamp: number): FSMOutput {
     if (gesture !== 'NONE') {
@@ -74,6 +78,7 @@ export class GestureStateMachine {
     this.confirmStartTime = 0;
     this.cooldownStartTime = 0;
     this.cooldownDuration = 0;
+    this.lastTriggerTime = -1;
   }
 
   getState(): FSMState {
@@ -102,10 +107,11 @@ export class GestureStateMachine {
 
     this.detectCount++;
 
-    if (this.detectCount >= CONFIRM_FRAMES) {
+    const neededFrames = this.getConfirmFrames(this.currentGesture, timestamp);
+    if (this.detectCount >= neededFrames) {
       this.state = 'CONFIRMING';
       this.confirmStartTime = timestamp;
-      logger.info('GESTURE', `FSM: DETECTING → CONFIRMING: ${gesture} (${this.detectCount} frames)`);
+      logger.info('GESTURE', `FSM: DETECTING → CONFIRMING: ${gesture} (${this.detectCount} frames, need ${neededFrames})`);
 
       // NEXT/PREV/SPEED fire immediately after confirmation
       if (gesture === 'NEXT' || gesture === 'PREV' || gesture === 'SPEED') {
@@ -167,12 +173,35 @@ export class GestureStateMachine {
   private fireAction(gesture: Gesture, timestamp: number): FSMOutput {
     logger.info('ACTION', `FSM: ★ TRIGGERED: ${gesture}`);
 
-    // Set gesture-specific cooldown
-    this.cooldownDuration = gesture === 'EXIT' ? EXIT_COOLDOWN_MS : gesture === 'PAUSE' ? PAUSE_COOLDOWN_MS : SWIPE_COOLDOWN_MS;
+    // Set gesture-specific cooldown, shortening it for rapid-fire swipe sequences.
+    this.cooldownDuration = gesture === 'EXIT'
+      ? EXIT_COOLDOWN_MS
+      : gesture === 'PAUSE'
+        ? PAUSE_COOLDOWN_MS
+        : this.isRapidSwipe(gesture, timestamp)
+          ? RAPID_SWIPE_COOLDOWN_MS
+          : SWIPE_COOLDOWN_MS;
 
+    this.lastTriggerTime = timestamp;
     this.state = 'COOLDOWN';
     this.cooldownStartTime = timestamp;
 
     return { state: 'TRIGGERED', gesture, shouldFire: true };
+  }
+
+  private getConfirmFrames(gesture: Gesture, timestamp: number): number {
+    if ((gesture === 'NEXT' || gesture === 'PREV' || gesture === 'SPEED')
+      && this.lastTriggerTime >= 0
+      && timestamp - this.lastTriggerTime <= RAPID_FIRE_WINDOW_MS) {
+      return RAPID_CONFIRM_FRAMES;
+    }
+
+    return CONFIRM_FRAMES;
+  }
+
+  private isRapidSwipe(gesture: Gesture, timestamp: number): boolean {
+    return (gesture === 'NEXT' || gesture === 'PREV' || gesture === 'SPEED')
+      && this.lastTriggerTime >= 0
+      && timestamp - this.lastTriggerTime <= RAPID_FIRE_WINDOW_MS;
   }
 }

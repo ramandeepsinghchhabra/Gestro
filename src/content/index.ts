@@ -62,11 +62,18 @@ async function enable() {
   hud.update('LOADING', 'NONE');
 
   try {
-    await startCamera((landmarks) => {
-      const gesture = recognizer.recognize(landmarks ?? []);
-      const output = fsm.update(gesture.gesture, performance.now());
+    await startCamera((result) => {
+      const recognition = recognizer.recognize(result.landmarks ?? [], result.brightness);
+      const output = fsm.update(recognition.gesture, performance.now());
 
-      hud?.update(output.state, output.gesture);
+      let warningMessage: string | undefined;
+      if (recognition.reason === 'LOW_LIGHT') {
+        warningMessage = 'low light detected';
+      } else if (recognition.reason === 'THUMB') {
+        warningMessage = 'thumb unclear';
+      }
+
+      hud?.update(output.state, output.gesture, undefined, warningMessage);
 
       const statusGesture = output.gesture === 'NONE' ? 'listening...' : output.gesture;
       if (statusGesture !== gestureState) {
@@ -86,8 +93,9 @@ async function enable() {
         if (output.gesture === 'SPEED') {
           adapter.toggleSpeed();
           const video = adapter.getCurrentVideo();
-          const isfast = video && video.playbackRate > 1.5;
-          hud?.update('TRIGGERED', 'SPEED', undefined, undefined, isfast ? '⚡ 2X SPEED' : '▶ NORMAL SPEED');
+          const playbackRate = video ? Number(video.playbackRate.toFixed(2)) : 1;
+          const speedLabel = playbackRate > 1 ? `⚡ ${playbackRate}X SPEED` : '▶ NORMAL SPEED';
+          hud?.update('TRIGGERED', 'SPEED', undefined, undefined, speedLabel);
         }
         if (output.gesture === 'EXIT') {
           hud?.update('TRIGGERED', 'EXIT');
