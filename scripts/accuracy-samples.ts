@@ -54,26 +54,37 @@ function makeFinger(extended: boolean, mcp: LandmarkPoint, pip: LandmarkPoint): 
 
 function makeLandmarks(template: { thumbExtended: boolean; indexExtended: boolean; middleExtended: boolean; ringExtended: boolean; pinkyExtended: boolean }): LandmarkPoint[] {
   const thumbTip = makeThumbTip(template.thumbExtended);
+  const thumbIp = { x: (THUMB_MCP.x + thumbTip.x) / 2, y: (THUMB_MCP.y + thumbTip.y) / 2, z: 0 };
+  const thumbCmc = { x: (WRIST.x + THUMB_MCP.x) / 2, y: (WRIST.y + THUMB_MCP.y) / 2, z: 0 };
+
   const index = makeFinger(template.indexExtended, INDEX_MCP, INDEX_PIP);
   const middle = makeFinger(template.middleExtended, MIDDLE_MCP, MIDDLE_PIP);
   const ring = makeFinger(template.ringExtended, RING_MCP, RING_PIP);
   const pinky = makeFinger(template.pinkyExtended, PINKY_MCP, PINKY_PIP);
 
-  const landmarks: LandmarkPoint[] = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5, z: 0 }));
+  const placeholder: LandmarkPoint = { x: WRIST.x, y: WRIST.y + 0.02, z: 0 };
+  const landmarks: LandmarkPoint[] = Array.from({ length: 21 }, () => ({ ...placeholder }));
+
   landmarks[0] = WRIST;
+  landmarks[1] = thumbCmc;
   landmarks[2] = THUMB_MCP;
+  landmarks[3] = thumbIp;
   landmarks[4] = thumbTip;
   landmarks[5] = INDEX_MCP;
   landmarks[6] = INDEX_PIP;
+  landmarks[7] = { x: (INDEX_PIP.x + index.tip.x) / 2, y: (INDEX_PIP.y + index.tip.y) / 2, z: 0 };
   landmarks[8] = index.tip;
   landmarks[9] = MIDDLE_MCP;
   landmarks[10] = MIDDLE_PIP;
+  landmarks[11] = { x: (MIDDLE_PIP.x + middle.tip.x) / 2, y: (MIDDLE_PIP.y + middle.tip.y) / 2, z: 0 };
   landmarks[12] = middle.tip;
   landmarks[13] = RING_MCP;
   landmarks[14] = RING_PIP;
+  landmarks[15] = { x: (RING_PIP.x + ring.tip.x) / 2, y: (RING_PIP.y + ring.tip.y) / 2, z: 0 };
   landmarks[16] = ring.tip;
   landmarks[17] = PINKY_MCP;
   landmarks[18] = PINKY_PIP;
+  landmarks[19] = { x: (PINKY_PIP.x + pinky.tip.x) / 2, y: (PINKY_PIP.y + pinky.tip.y) / 2, z: 0 };
   landmarks[20] = pinky.tip;
 
   return landmarks.map((point) => jitterPoint(point, 0.015));

@@ -59,7 +59,7 @@ export function installSPAWatcher(): void {
     window.dispatchEvent(new Event('gesture:urlchange'));
   };
 
-  const originalReplaceState = history.replaceState.bind(history.replaceState);
+  const originalReplaceState = history.replaceState.bind(history);
   history.replaceState = (...args: Parameters<typeof history.replaceState>) => {
     originalReplaceState(...args);
     window.dispatchEvent(new Event('gesture:urlchange'));

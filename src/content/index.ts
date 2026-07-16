@@ -192,6 +192,7 @@ window.addEventListener('gesture:urlchange', () => {
 
 // Read saved state on initial page load
 async function init() {
+  await logger.initialize();
   const result = await chrome.storage.local.get('enabled');
   enabled = result.enabled === true;
   if (enabled) enable();

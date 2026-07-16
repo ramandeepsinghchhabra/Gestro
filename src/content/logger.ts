@@ -1,7 +1,21 @@
 export type LogTag = 'INIT' | 'MODEL' | 'CAMERA' | 'GESTURE' | 'ACTION' | 'ERROR' | 'CLEANUP' | 'PLATFORM';
 
 class Logger {
+  private debug = false;
+
+  async initialize(): Promise<void> {
+    const result = await chrome.storage.local.get('debug').catch(() => ({ debug: false }));
+    this.debug = result.debug === true;
+
+    chrome.storage.onChanged.addListener((changes) => {
+      if (changes.debug) {
+        this.debug = changes.debug.newValue === true;
+      }
+    });
+  }
+
   info(tag: LogTag, ...messages: any[]): void {
+    if (!this.debug) return;
     console.log(`[${tag}]`, ...messages);
   }
 
