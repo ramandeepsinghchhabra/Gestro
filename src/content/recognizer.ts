@@ -99,9 +99,13 @@ export class GestureRecognizer {
     if (!this.isCurled(lm, RING_TIP, RING_PIP)) return false;
     if (!this.isCurled(lm, PINKY_TIP, PINKY_PIP)) return false;
 
-    // Index tip should be near the highest point
+    // Thumb must not be extended for a true one-finger gesture
+    if (this.isThumbExtended(lm)) return false;
+
+    // Index tip should be near the highest point, ignoring thumb landmarks
     let minY = Infinity;
-    for (const point of lm) {
+    for (let i = THUMB_TIP + 1; i < lm.length; i++) {
+      const point = lm[i];
       if (point.y < minY) minY = point.y;
     }
     if (indexTip.y - minY > HIGHEST_POINT_TOLERANCE) return false;
@@ -114,6 +118,7 @@ export class GestureRecognizer {
     if (!this.isExtended(lm, INDEX_TIP, INDEX_MCP)) return false;
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
 
+    if (this.isThumbExtended(lm)) return false;
     if (!this.isCurled(lm, RING_TIP, RING_PIP)) return false;
     if (!this.isCurled(lm, PINKY_TIP, PINKY_PIP)) return false;
 
@@ -126,6 +131,7 @@ export class GestureRecognizer {
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
     if (!this.isExtended(lm, RING_TIP, RING_MCP)) return false;
 
+    if (this.isThumbExtended(lm)) return false;
     if (!this.isCurled(lm, PINKY_TIP, PINKY_PIP)) return false;
 
     return true;
