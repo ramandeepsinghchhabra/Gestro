@@ -29,3 +29,18 @@ export function getViewportVisibility(el: Element): number {
     return 0;
   }
 }
+
+export function getFeedVideos(): HTMLVideoElement[] {
+  return Array.from(document.querySelectorAll<HTMLVideoElement>('video'))
+    .filter((video) => {
+      if (video.hidden) return false;
+      if (video.offsetWidth === 0 || video.offsetHeight === 0) return false;
+      const style = window.getComputedStyle(video);
+      return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+    })
+    .sort((a, b) => {
+      const rectA = a.getBoundingClientRect();
+      const rectB = b.getBoundingClientRect();
+      return rectA.top - rectB.top || rectA.left - rectB.left;
+    });
+}

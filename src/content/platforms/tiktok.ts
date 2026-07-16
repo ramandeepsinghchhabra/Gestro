@@ -1,6 +1,6 @@
 import { logger } from '../logger';
 import type { PlatformAdapter } from './index';
-import { getViewportVisibility } from './utils';
+import { getFeedVideos, getViewportVisibility } from './utils';
 
 export class TikTokAdapter implements PlatformAdapter {
   readonly name = 'tiktok' as const;
@@ -20,8 +20,8 @@ export class TikTokAdapter implements PlatformAdapter {
         }
       }
 
-      // Fallback: find most visible video in viewport
-      const allVideos = Array.from(document.querySelectorAll<HTMLVideoElement>('video'));
+      // Fallback: find most visible feed video in viewport
+      const allVideos = getFeedVideos();
       let bestVideo: HTMLVideoElement | null = null;
       let bestVisibility = 0;
 
@@ -42,7 +42,7 @@ export class TikTokAdapter implements PlatformAdapter {
   next(): void {
     try {
       logger.info('ACTION', 'TikTok: Attempting next video');
-      const videos = Array.from(document.querySelectorAll('video'));
+      const videos = getFeedVideos();
       let bestIdx = -1;
       let bestVis = 0;
 
@@ -73,7 +73,7 @@ export class TikTokAdapter implements PlatformAdapter {
   previous(): void {
     try {
       logger.info('ACTION', 'TikTok: Attempting previous video');
-      const videos = Array.from(document.querySelectorAll('video'));
+      const videos = getFeedVideos();
       let bestIdx = -1;
       let bestVis = 0;
 
@@ -122,8 +122,11 @@ export class TikTokAdapter implements PlatformAdapter {
     try {
       const video = this.getCurrentVideo();
       if (!video) return;
-      
-      if (video.playbackRate === 1.0) {
+
+      const currentRate = video.playbackRate;
+      const isTwoX = Math.abs(currentRate - 2.0) < 0.25;
+
+      if (!isTwoX) {
         video.playbackRate = 2.0;
         logger.info('ACTION', 'TikTok: Speed 2x');
       } else {
