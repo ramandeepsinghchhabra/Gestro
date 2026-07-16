@@ -2,7 +2,7 @@
  * Copies MediaPipe WASM runtime from node_modules into the models directory.
  * Run with: npm run download-models
  */
-import { existsSync, mkdirSync, cpSync, appendFileSync } from 'fs';
+import { existsSync, mkdirSync, cpSync, appendFileSync, readFileSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -33,10 +33,16 @@ if (typeof window !== 'undefined') {
 `;
 
   if (existsSync(wasmBin)) {
-    appendFileSync(wasmBin, patchScript);
+    const contents = readFileSync(wasmBin, 'utf8');
+    if (!contents.includes('window.createMediapipeSolutionsWasm = createMediapipeSolutionsWasm')) {
+      appendFileSync(wasmBin, patchScript);
+    }
   }
   if (existsSync(simdWasmBin)) {
-    appendFileSync(simdWasmBin, patchScript);
+    const contents = readFileSync(simdWasmBin, 'utf8');
+    if (!contents.includes('window.createMediapipeSolutionsSimdWasm = createMediapipeSolutionsSimdWasm')) {
+      appendFileSync(simdWasmBin, patchScript);
+    }
   }
   console.log('  ✓ Patched WASM loaders for ES module compatibility.');
 }

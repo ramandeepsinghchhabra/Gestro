@@ -4,7 +4,7 @@ import { destroyMediaPipe } from './mediapipe';
 import { GestureRecognizer } from './recognizer';
 import { GestureStateMachine } from './state-machine';
 import { HUD } from './hud';
-import { detectPlatform, createAdapter } from './platforms/index';
+import { detectPlatform, createAdapter, installSPAWatcher } from './platforms/index';
 
 let enabled = false;
 let running = false;
@@ -21,6 +21,7 @@ async function enable() {
   
   starting = true;
   logger.info('INIT', 'Enabling gesture extension...');
+  installSPAWatcher();
 
   const platform = detectPlatform();
   if (!platform) {

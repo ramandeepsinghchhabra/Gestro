@@ -48,23 +48,27 @@ export function createAdapter(platform: PlatformName): PlatformAdapter {
   }
 }
 
-// ── SPA Navigation Watcher ──
-// Patch history.pushState so we detect YouTube/Instagram/TikTok SPA navigations
-const originalPushState = history.pushState.bind(history);
-history.pushState = (...args: Parameters<typeof history.pushState>) => {
-  originalPushState(...args);
-  window.dispatchEvent(new Event('gesture:urlchange'));
-};
+let spaWatcherInstalled = false;
+export function installSPAWatcher(): void {
+  if (spaWatcherInstalled) return;
+  spaWatcherInstalled = true;
 
-const originalReplaceState = history.replaceState.bind(history);
-history.replaceState = (...args: Parameters<typeof history.replaceState>) => {
-  originalReplaceState(...args);
-  window.dispatchEvent(new Event('gesture:urlchange'));
-};
+  const originalPushState = history.pushState.bind(history);
+  history.pushState = (...args: Parameters<typeof history.pushState>) => {
+    originalPushState(...args);
+    window.dispatchEvent(new Event('gesture:urlchange'));
+  };
 
-window.addEventListener('popstate', () => {
-  window.dispatchEvent(new Event('gesture:urlchange'));
-});
+  const originalReplaceState = history.replaceState.bind(history.replaceState);
+  history.replaceState = (...args: Parameters<typeof history.replaceState>) => {
+    originalReplaceState(...args);
+    window.dispatchEvent(new Event('gesture:urlchange'));
+  };
+
+  window.addEventListener('popstate', () => {
+    window.dispatchEvent(new Event('gesture:urlchange'));
+  });
+}
 
 export { YouTubeAdapter } from './youtube';
 export { InstagramAdapter } from './instagram';
