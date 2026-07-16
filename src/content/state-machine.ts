@@ -35,12 +35,12 @@ export class GestureStateMachine {
   private confirmStartTime = 0;
   private cooldownStartTime = 0;
   private cooldownDuration = 0;
-  private lastHandSeenTime = 0;
+  private lastHandSeenTime = -1;
 
   update(gesture: Gesture, timestamp: number): FSMOutput {
     if (gesture !== 'NONE') {
       this.lastHandSeenTime = timestamp;
-    } else if (timestamp - this.lastHandSeenTime > HAND_ABSENT_TIMEOUT_MS && this.state !== 'COOLDOWN') {
+    } else if (this.lastHandSeenTime >= 0 && timestamp - this.lastHandSeenTime > HAND_ABSENT_TIMEOUT_MS && this.state !== 'COOLDOWN') {
       this.reset();
       return { state: 'IDLE', gesture: 'NONE', shouldFire: false };
     }

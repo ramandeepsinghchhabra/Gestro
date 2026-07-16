@@ -180,9 +180,11 @@ export class GestureRecognizer {
   private isThumbExtended(lm: LandmarkPoint[]): boolean {
     const tip = lm[THUMB_TIP];
     const mcp = lm[THUMB_MCP];
-    if (!tip || !mcp) return false;
     const wrist = lm[WRIST];
-    if (!wrist) return false;
-    return Math.abs(tip.x - wrist.x) > Math.abs(mcp.x - wrist.x);
+    if (!tip || !mcp || !wrist) return false;
+
+    const wristToTip = Math.hypot(tip.x - wrist.x, tip.y - wrist.y);
+    const wristToMcp = Math.hypot(mcp.x - wrist.x, mcp.y - wrist.y);
+    return wristToTip > wristToMcp + EXTENSION_MARGIN;
   }
 }
