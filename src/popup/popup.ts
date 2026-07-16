@@ -1,4 +1,5 @@
 const toggle = document.getElementById('toggle') as HTMLInputElement
+const debugToggle = document.getElementById('debug-toggle') as HTMLInputElement
 const badge = document.getElementById('status-badge') as HTMLElement
 const platformEl = document.getElementById('platform') as HTMLElement
 const cameraStatus = document.getElementById('camera-status') as HTMLElement
@@ -35,6 +36,9 @@ async function queryState(): Promise<PopupState> {
   const enabledRes = await chrome.runtime.sendMessage({ type: 'GET_ENABLED' }).catch(() => ({ enabled: false }))
   const enabled = enabledRes?.enabled ?? false
 
+  const debugRes = await chrome.storage.local.get('debug').catch(() => ({ debug: false }))
+  const debug = debugRes?.debug === true
+
   let camera = '—'
   let gesture = '—'
 
@@ -64,13 +68,14 @@ async function queryState(): Promise<PopupState> {
     }
   }
 
-  return { platform, enabled, camera, gesture }
+  return { platform, enabled, camera, gesture, debug }
 }
 
 async function init(): Promise<void> {
-  const { platform, enabled, camera, gesture } = await queryState()
+  const { platform, enabled, camera, gesture, debug } = await queryState()
 
   toggle.checked = enabled
+  debugToggle.checked = debug
   setBadge(enabled && platform !== 'not supported' ? 'on' : 'off')
   platformEl.textContent = platform
   cameraStatus.textContent = camera
@@ -120,6 +125,11 @@ toggle.addEventListener('change', async () => {
   }
 
   await chrome.runtime.sendMessage({ type: 'SET_ENABLED', enabled }).catch(() => {})
+})
+
+debugToggle.addEventListener('change', async () => {
+  const debug = debugToggle.checked
+  await chrome.storage.local.set({ debug }).catch(() => {})
 })
 
 init()
