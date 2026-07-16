@@ -44,9 +44,10 @@ const PINKY_TIP = 20;
 
 // ── Thresholds ──
 const EXTENSION_MARGIN = 0.05;           // Tip must be > this above MCP to count as extended
-const THUMB_SECONDARY_MARGIN = 0.10;     // Thumb must be clearly away from the base joint
-const THUMB_ALIGNMENT_THRESHOLD = 0.60;  // Thumb vector should roughly align with the wrist direction
+const THUMB_SECONDARY_MARGIN = 0.08;     // Thumb must be clearly away from the base joint
+const THUMB_ALIGNMENT_THRESHOLD = 0.72;  // Thumb vector should roughly align with the wrist direction
 const THUMB_LENGTH_RATIO = 1.10;         // Thumb tip must be a good bit further from wrist than MCP
+const THUMB_MIN_EXTENSION_RATIO = 0.40;  // Thumb length relative to wrist-to-MCP for smaller hands
 const INDEX_POINT_MARGIN = 0.10;         // Index pointing margin (stricter for 1-finger)
 const CURL_MARGIN = 0.04;                // Tip must be > this below PIP to count as curled
 const HIGHEST_POINT_TOLERANCE = 0.03;
@@ -157,19 +158,19 @@ export class GestureRecognizer {
     if (!this.isExtended(lm, RING_TIP, RING_MCP)) return false;
     if (!this.isExtended(lm, PINKY_TIP, PINKY_MCP)) return false;
     if (this.isThumbExtended(lm)) return false;
+    if (this.isOpenPalmWithThumb(lm)) return false;
 
     return true;
   }
 
   // ── 5 Fingers: Full open palm, all fingers + thumb extended ──
   private isFiveFingersUp(lm: LandmarkPoint[]): boolean {
-    if (!this.isThumbExtended(lm)) return false;
     if (!this.isExtended(lm, INDEX_TIP, INDEX_MCP)) return false;
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
     if (!this.isExtended(lm, RING_TIP, RING_MCP)) return false;
     if (!this.isExtended(lm, PINKY_TIP, PINKY_MCP)) return false;
 
-    return true;
+    return this.isThumbExtended(lm) || this.isOpenPalmWithThumb(lm);
   }
 
   // ── Helpers ──
@@ -207,8 +208,36 @@ export class GestureRecognizer {
     const thumbLength = Math.hypot(thumbVector.x, thumbVector.y);
     const normalizedDot = baseLength > 0 && thumbLength > 0 ? dotProduct / (baseLength * thumbLength) : 0;
     const isAligned = normalizedDot > THUMB_ALIGNMENT_THRESHOLD;
-    const hasSecondaryExtension = thumbLength > THUMB_SECONDARY_MARGIN && wristToTip > wristToMcp * THUMB_LENGTH_RATIO;
+    const minThumbLength = Math.max(THUMB_SECONDARY_MARGIN, wristToMcp * THUMB_MIN_EXTENSION_RATIO);
+    const hasSecondaryExtension = thumbLength > minThumbLength && wristToTip > wristToMcp * THUMB_LENGTH_RATIO;
 
     return wristToTip > wristToMcp + EXTENSION_MARGIN && isAligned && hasSecondaryExtension;
+  }
+
+  private isOpenPalmWithThumb(lm: LandmarkPoint[]): boolean {
+    const tipIndices = [THUMB_TIP, INDEX_TIP, MIDDLE_TIP, RING_TIP, PINKY_TIP];
+    const fingerTips = tipIndices
+      .map((idx) => lm[idx])
+      .filter((point): point is LandmarkPoint => Boolean(point));
+
+    if (fingerTips.length !== 5) return false;
+
+    const yValues = fingerTips.map((tip) => tip.y);
+    const xValues = fingerTips.map((tip) => tip.x);
+    const yRange = Math.max(...yValues) - Math.min(...yValues);
+    const xRange = Math.max(...xValues) - Math.min(...xValues);
+
+    const thumbTip = lm[THUMB_TIP];
+    const thumbMcp = lm[THUMB_MCP];
+    const wrist = lm[WRIST];
+    if (!thumbTip || !thumbMcp || !wrist) return false;
+
+    const thumbDistance = Math.hypot(thumbTip.x - thumbMcp.x, thumbTip.y - thumbMcp.y);
+    const wristToMcp = Math.hypot(thumbMcp.x - wrist.x, thumbMcp.y - wrist.y);
+    const thumbOpenDistance = Math.max(THUMB_SECONDARY_MARGIN * 0.75, wristToMcp * THUMB_MIN_EXTENSION_RATIO);
+    const palmSpread = xRange > 0.08 && yRange < 0.30;
+    const thumbOutside = thumbTip.x < Math.min(...xValues.slice(1)) - 0.02 || thumbTip.x > Math.max(...xValues.slice(1)) + 0.02;
+
+    return palmSpread && thumbDistance > thumbOpenDistance && thumbOutside;
   }
 }

@@ -27,7 +27,7 @@ const PAUSE_COOLDOWN_MS = 1200;               // Cooldown for pause
 export const SWIPE_COOLDOWN_MS = 1200;        // Cooldown for next/prev
 export const RAPID_SWIPE_COOLDOWN_MS = 800;   // Reduced cooldown for rapid gesture sequences
 export const RAPID_FIRE_WINDOW_MS = 2000;     // When repeated gestures happen within this window
-const EXIT_HOLD_MS = 3000;                    // Open palm must be held 3s to exit
+const EXIT_HOLD_MS = 1500;                    // Open palm must be held 1.5s to exit
 const EXIT_COOLDOWN_MS = 3000;                // Long cooldown after exit
 const HAND_ABSENT_TIMEOUT_MS = 3000;
 

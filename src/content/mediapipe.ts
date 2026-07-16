@@ -40,9 +40,16 @@ export async function initMediaPipe(onResult: (landmarks: LandmarkPoint[] | null
     while (isInitializing) {
       await new Promise(r => setTimeout(r, 100));
     }
-      const initializedHands = handsInstance;
-      if (initializedHands) {
-        initializedHands.onResults((results: any) => {
+
+    const initializedHands = handsInstance;
+    if (initializedHands) {
+      initializedHands.onResults((results: any) => {
+        const landmarks = results.multiHandLandmarks?.[0] ?? null;
+        onResult(landmarks);
+      });
+      return;
+    }
+  }
 
   isInitializing = true;
   logger.info('MODEL', 'Initializing MediaPipe from scratch...');

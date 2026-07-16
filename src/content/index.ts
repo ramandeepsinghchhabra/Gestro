@@ -71,12 +71,9 @@ async function enable() {
       const recognition = recognizer.recognize(result.landmarks ?? [], result.brightness);
       const output = fsm.update(recognition.gesture, performance.now());
 
-      let warningMessage: string | undefined;
-      if (recognition.reason === 'LOW_LIGHT') {
-        warningMessage = 'low light detected';
-      } else if (recognition.reason === 'THUMB') {
-        warningMessage = 'thumb unclear';
-      }
+      const warningMessage = recognition.reason === 'LOW_LIGHT'
+        ? 'low light detected'
+        : undefined;
 
       hud?.update(output.state, output.gesture, undefined, warningMessage);
 
