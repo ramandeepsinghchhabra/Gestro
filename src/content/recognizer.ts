@@ -16,7 +16,7 @@ export type Gesture = 'PAUSE' | 'NEXT' | 'PREV' | 'SPEED' | 'EXIT' | 'NONE';
 export interface RecognitionResult {
   gesture: Gesture;
   confidence: number;
-  reason?: 'LOW_LIGHT' | 'THUMB';
+  reason?: 'LOW_LIGHT';
 }
 
 export interface LandmarkPoint {
@@ -43,11 +43,14 @@ const PINKY_PIP = 18;
 const PINKY_TIP = 20;
 
 // ── Thresholds ──
-const EXTENSION_MARGIN = 0.05;       // Tip must be > this above MCP to count as extended
-const INDEX_POINT_MARGIN = 0.10;     // Index pointing margin (stricter for 1-finger)
-const CURL_MARGIN = 0.04;            // Tip must be > this below PIP to count as curled
+const EXTENSION_MARGIN = 0.05;           // Tip must be > this above MCP to count as extended
+const THUMB_SECONDARY_MARGIN = 0.10;     // Thumb must be clearly away from the base joint
+const THUMB_ALIGNMENT_THRESHOLD = 0.60;  // Thumb vector should roughly align with the wrist direction
+const THUMB_LENGTH_RATIO = 1.10;         // Thumb tip must be a good bit further from wrist than MCP
+const INDEX_POINT_MARGIN = 0.10;         // Index pointing margin (stricter for 1-finger)
+const CURL_MARGIN = 0.04;                // Tip must be > this below PIP to count as curled
 const HIGHEST_POINT_TOLERANCE = 0.03;
-const LOW_LIGHT_THRESHOLD = 0.18;    // Frame brightness below this is considered dim.
+const LOW_LIGHT_THRESHOLD = 0.18;        // Frame brightness below this is considered dim.
 
 export class GestureRecognizer {
 
@@ -62,28 +65,24 @@ export class GestureRecognizer {
     // Check from MOST specific (fewest fingers) to LEAST specific (all fingers)
     // This prevents 5-finger from matching when you only show 3, etc.
 
-    if (this.isOneFingerUp(landmarks)) {
-      return { gesture: 'NEXT', confidence: 0.85 };
-    }
-
-    if (this.isTwoFingersUp(landmarks)) {
-      return { gesture: 'PREV', confidence: 0.85 };
-    }
-
-    if (this.isThreeFingersUp(landmarks)) {
-      return { gesture: 'SPEED', confidence: 0.85 };
+    if (this.isFiveFingersUp(landmarks)) {
+      return { gesture: 'EXIT', confidence: 0.90 };
     }
 
     if (this.isFourFingersUp(landmarks)) {
       return { gesture: 'PAUSE', confidence: 0.85 };
     }
 
-    if (this.isFiveFingersUp(landmarks)) {
-      return { gesture: 'EXIT', confidence: 0.90 };
+    if (this.isThreeFingersUp(landmarks)) {
+      return { gesture: 'SPEED', confidence: 0.85 };
     }
 
-    if (this.hasThumbMismatch(landmarks)) {
-      return { gesture: 'NONE', confidence: 0, reason: 'THUMB' };
+    if (this.isTwoFingersUp(landmarks)) {
+      return { gesture: 'PREV', confidence: 0.85 };
+    }
+
+    if (this.isOneFingerUp(landmarks)) {
+      return { gesture: 'NEXT', confidence: 0.85 };
     }
 
     if (brightness !== null && brightness < LOW_LIGHT_THRESHOLD) {
@@ -110,8 +109,6 @@ export class GestureRecognizer {
     if (!this.isCurled(lm, MIDDLE_TIP, MIDDLE_PIP)) return false;
     if (!this.isCurled(lm, RING_TIP, RING_PIP)) return false;
     if (!this.isCurled(lm, PINKY_TIP, PINKY_PIP)) return false;
-
-    // Thumb must not be extended for a true one-finger gesture
     if (this.isThumbExtended(lm)) return false;
 
     // Index tip should be near the highest point, ignoring thumb landmarks
@@ -132,10 +129,9 @@ export class GestureRecognizer {
   private isTwoFingersUp(lm: LandmarkPoint[]): boolean {
     if (!this.isExtended(lm, INDEX_TIP, INDEX_MCP)) return false;
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
-
-    if (this.isThumbExtended(lm)) return false;
     if (!this.isCurled(lm, RING_TIP, RING_PIP)) return false;
     if (!this.isCurled(lm, PINKY_TIP, PINKY_PIP)) return false;
+    if (this.isThumbExtended(lm)) return false;
 
     return true;
   }
@@ -147,8 +143,8 @@ export class GestureRecognizer {
     if (!this.isExtended(lm, INDEX_TIP, INDEX_MCP)) return false;
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
     if (!this.isExtended(lm, RING_TIP, RING_MCP)) return false;
-
     if (this.isThumbExtended(lm)) return false;
+
     if (!this.isCurled(lm, PINKY_TIP, PINKY_PIP)) return false;
 
     return true;
@@ -160,8 +156,6 @@ export class GestureRecognizer {
     if (!this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)) return false;
     if (!this.isExtended(lm, RING_TIP, RING_MCP)) return false;
     if (!this.isExtended(lm, PINKY_TIP, PINKY_MCP)) return false;
-
-    // Thumb must NOT be extended (this differentiates 4 from 5)
     if (this.isThumbExtended(lm)) return false;
 
     return true;
@@ -176,45 +170,6 @@ export class GestureRecognizer {
     if (!this.isExtended(lm, PINKY_TIP, PINKY_MCP)) return false;
 
     return true;
-  }
-
-  private hasThumbMismatch(lm: LandmarkPoint[]): boolean {
-    return this.isOneFingerThumbMismatch(lm)
-      || this.isTwoFingersThumbMismatch(lm)
-      || this.isThreeFingersThumbMismatch(lm)
-      || this.isFiveFingersThumbMismatch(lm);
-  }
-
-  private isOneFingerThumbMismatch(lm: LandmarkPoint[]): boolean {
-    return this.isExtended(lm, INDEX_TIP, INDEX_MCP)
-      && this.isCurled(lm, MIDDLE_TIP, MIDDLE_PIP)
-      && this.isCurled(lm, RING_TIP, RING_PIP)
-      && this.isCurled(lm, PINKY_TIP, PINKY_PIP)
-      && this.isThumbExtended(lm);
-  }
-
-  private isTwoFingersThumbMismatch(lm: LandmarkPoint[]): boolean {
-    return this.isExtended(lm, INDEX_TIP, INDEX_MCP)
-      && this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)
-      && this.isCurled(lm, RING_TIP, RING_PIP)
-      && this.isCurled(lm, PINKY_TIP, PINKY_PIP)
-      && this.isThumbExtended(lm);
-  }
-
-  private isThreeFingersThumbMismatch(lm: LandmarkPoint[]): boolean {
-    return this.isExtended(lm, INDEX_TIP, INDEX_MCP)
-      && this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)
-      && this.isExtended(lm, RING_TIP, RING_MCP)
-      && this.isCurled(lm, PINKY_TIP, PINKY_PIP)
-      && this.isThumbExtended(lm);
-  }
-
-  private isFiveFingersThumbMismatch(lm: LandmarkPoint[]): boolean {
-    return !this.isThumbExtended(lm)
-      && this.isExtended(lm, INDEX_TIP, INDEX_MCP)
-      && this.isExtended(lm, MIDDLE_TIP, MIDDLE_MCP)
-      && this.isExtended(lm, RING_TIP, RING_MCP)
-      && this.isExtended(lm, PINKY_TIP, PINKY_MCP);
   }
 
   // ── Helpers ──
@@ -248,8 +203,11 @@ export class GestureRecognizer {
     const thumbVector = { x: tip.x - mcp.x, y: tip.y - mcp.y };
     const baseVector = { x: mcp.x - wrist.x, y: mcp.y - wrist.y };
     const dotProduct = thumbVector.x * baseVector.x + thumbVector.y * baseVector.y;
-    const isAligned = dotProduct > 0;
-    const hasSecondaryExtension = Math.abs(tip.x - mcp.x) > EXTENSION_MARGIN || (mcp.y - tip.y) > EXTENSION_MARGIN;
+    const baseLength = Math.hypot(baseVector.x, baseVector.y);
+    const thumbLength = Math.hypot(thumbVector.x, thumbVector.y);
+    const normalizedDot = baseLength > 0 && thumbLength > 0 ? dotProduct / (baseLength * thumbLength) : 0;
+    const isAligned = normalizedDot > THUMB_ALIGNMENT_THRESHOLD;
+    const hasSecondaryExtension = thumbLength > THUMB_SECONDARY_MARGIN && wristToTip > wristToMcp * THUMB_LENGTH_RATIO;
 
     return wristToTip > wristToMcp + EXTENSION_MARGIN && isAligned && hasSecondaryExtension;
   }
