@@ -55,6 +55,11 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     return true; // Keep message channel open for async response
   }
 
+  if (msg.type === 'EXTENSION_STATUS_UPDATE' && _sender.tab) {
+    chrome.runtime.sendMessage(msg).catch(() => {});
+    return false;
+  }
+
   if (msg.type === 'GET_ENABLED') {
     getEnabled()
       .then((enabled) => sendResponse({ enabled }))

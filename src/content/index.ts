@@ -9,9 +9,32 @@ import { detectPlatform, createAdapter, installSPAWatcher } from './platforms/in
 let enabled = false;
 let running = false;
 let starting = false;
+let cameraState: 'off' | 'requested' | 'starting' | 'running' = 'off';
+let gestureState = '—';
+let platformName: string | null = null;
 let hud: HUD | null = null;
 const recognizer = new GestureRecognizer();
 const fsm = new GestureStateMachine();
+
+function sendStatusUpdate(): void {
+  chrome.runtime.sendMessage({
+    type: 'EXTENSION_STATUS_UPDATE',
+    status: {
+      platform: platformName,
+      enabled,
+      running,
+      starting,
+      camera: cameraState,
+      gesture: gestureState,
+    }
+  }).catch(() => {});
+}
+
+function setStatus(camera: 'off' | 'requested' | 'starting' | 'running', gesture: string): void {
+  cameraState = camera;
+  gestureState = gesture;
+  sendStatusUpdate();
+}
 
 async function enable() {
   if (running || starting) {
@@ -24,11 +47,15 @@ async function enable() {
   installSPAWatcher();
 
   const platform = detectPlatform();
+  platformName = platform;
   if (!platform) {
     logger.error('INIT', 'Not a supported platform');
     starting = false;
+    setStatus('off', 'not supported');
     return;
   }
+
+  setStatus('starting', '—');
 
   const adapter = createAdapter(platform);
   hud = new HUD();
@@ -40,6 +67,12 @@ async function enable() {
       const output = fsm.update(gesture.gesture, performance.now());
 
       hud?.update(output.state, output.gesture);
+
+      const statusGesture = output.gesture === 'NONE' ? 'listening...' : output.gesture;
+      if (statusGesture !== gestureState) {
+        gestureState = statusGesture;
+        sendStatusUpdate();
+      }
 
       if (output.shouldFire) {
         if (output.gesture === 'NEXT') adapter.next();
@@ -74,10 +107,13 @@ async function enable() {
 
     hud.update('IDLE', 'NONE');
     running = true;
+    setStatus('running', 'listening...');
     logger.info('INIT', 'Extension successfully enabled');
 
   } catch (err: any) {
     running = false;
+    setStatus('off', '—');
+
     if (err.message === 'PERMISSION_DENIED') {
       hud?.showError('camera blocked');
     } else if (err.message === 'NO_CAMERA') {
@@ -102,6 +138,7 @@ function disable() {
   hud = null;
   running = false;
   starting = false;
+  setStatus('off', '—');
   recognizer.reset();
   fsm.reset();
   logger.info('CLEANUP', 'Extension disabled (model kept alive)');
@@ -119,7 +156,14 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
 
   if (msg.type === 'GET_EXTENSION_STATUS') {
-    sendResponse({ running, starting, enabled });
+    sendResponse({
+      running,
+      starting,
+      enabled,
+      camera: cameraState,
+      gesture: gestureState,
+      platform: platformName,
+    });
   }
 });
 

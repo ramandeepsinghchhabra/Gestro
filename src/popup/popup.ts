@@ -4,6 +4,7 @@ const badge = document.getElementById('status-badge') as HTMLElement
 const platformEl = document.getElementById('platform') as HTMLElement
 const cameraStatus = document.getElementById('camera-status') as HTMLElement
 const gestureDisplay = document.getElementById('current-gesture') as HTMLElement
+const supportHint = document.getElementById('support-hint') as HTMLElement
 
 let currentPlatform = 'not supported'
 
@@ -12,6 +13,7 @@ type PopupState = {
   enabled: boolean
   camera: string
   gesture: string
+  debug: boolean
 }
 
 function getPlatform(url: string): string {
@@ -55,14 +57,11 @@ async function queryState(): Promise<PopupState> {
         gesture = 'listening...'
       } else if (tabStatus.starting) {
         camera = 'starting...'
-      } else if (enabled) {
+      } else if (tabStatus.enabled) {
         camera = 'requested'
       } else {
         camera = 'off'
       }
-    } else if (enabled) {
-      camera = 'requested'
-      gesture = 'listening...'
     } else {
       camera = 'off'
     }
@@ -75,6 +74,8 @@ async function init(): Promise<void> {
   const { platform, enabled, camera, gesture, debug } = await queryState()
 
   toggle.checked = enabled
+  toggle.disabled = platform === 'not supported'
+  supportHint.style.display = platform === 'not supported' ? 'block' : 'none'
   debugToggle.checked = debug
   setBadge(enabled && platform !== 'not supported' ? 'on' : 'off')
   platformEl.textContent = platform
@@ -116,20 +117,25 @@ toggle.addEventListener('change', async () => {
   }
 
   setBadge(enabled ? 'on' : 'off')
-  if (enabled) {
-    cameraStatus.textContent = 'requested'
-    gestureDisplay.textContent = 'listening...'
-  } else {
-    cameraStatus.textContent = 'off'
-    gestureDisplay.textContent = '—'
-  }
-
   await chrome.runtime.sendMessage({ type: 'SET_ENABLED', enabled }).catch(() => {})
 })
 
 debugToggle.addEventListener('change', async () => {
   const debug = debugToggle.checked
   await chrome.storage.local.set({ debug }).catch(() => {})
+})
+
+chrome.runtime.onMessage.addListener((msg, _sender) => {
+  if (msg.type === 'EXTENSION_STATUS_UPDATE' && typeof msg.status === 'object') {
+    const { platform, enabled, camera, gesture } = msg.status
+    if (platform !== currentPlatform) return
+
+    toggle.checked = enabled
+    setBadge(enabled ? 'on' : 'off')
+    platformEl.textContent = platform
+    cameraStatus.textContent = camera
+    gestureDisplay.textContent = gesture
+  }
 })
 
 init()
