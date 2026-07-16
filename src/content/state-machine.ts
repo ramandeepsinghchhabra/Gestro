@@ -56,7 +56,13 @@ export class GestureStateMachine {
         return this.handleTriggered(timestamp);
       case 'COOLDOWN':
         return this.handleCooldown(timestamp);
+      default:
+        return this.assertUnreachable(this.state);
     }
+  }
+
+  private assertUnreachable(value: never): never {
+    throw new Error(`Unhandled FSM state: ${String(value)}`);
   }
 
   reset(): void {

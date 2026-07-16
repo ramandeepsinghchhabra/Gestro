@@ -8,6 +8,7 @@ let stream: MediaStream | null = null;
 let animationId: number | null = null;
 let isRunning = false;
 let hiddenVideo: HTMLVideoElement | null = null;
+let loadedDataListener: (() => void) | null = null;
 let currentOnResult: HandResultCallback | null = null;
 
 // Target FPS for gesture inference (30fps is plenty for gestures, saves CPU)
@@ -86,6 +87,10 @@ export function stopCamera(): void {
   }
 
   if (hiddenVideo) {
+    if (loadedDataListener) {
+      hiddenVideo.removeEventListener('loadeddata', loadedDataListener);
+      loadedDataListener = null;
+    }
     hiddenVideo.pause();
     hiddenVideo.removeAttribute('src');
     hiddenVideo.srcObject = null;
@@ -111,12 +116,12 @@ function startLoop(): void {
   
   logger.info('CAMERA', 'Video element created and attached');
 
-  let frameCount = 0;
-  let lastTime = performance.now();
-
-  hiddenVideo.addEventListener('loadeddata', () => {
+  const onLoadedData = () => {
     logger.info('CAMERA', 'Video data loaded, beginning frame extraction');
     
+    let frameCount = 0;
+    let lastTime = performance.now();
+
     async function loop(time: number) {
       if (!isRunning || !stream || !hiddenVideo) {
         logger.info('STOP', 'Inference loop terminating cleanly');
@@ -150,5 +155,8 @@ function startLoop(): void {
     
     // Start the loop
     animationId = requestAnimationFrame(loop);
-  });
+  };
+
+  loadedDataListener = onLoadedData;
+  hiddenVideo.addEventListener('loadeddata', onLoadedData);
 }

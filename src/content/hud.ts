@@ -126,6 +126,8 @@ export class HUD {
       case 'SPEED': return '⚡ 2X SPEED';
       case 'EXIT': return '👋 EXIT';
       case 'NONE': return '';
+      default:
+        return '';
     }
   }
 }
