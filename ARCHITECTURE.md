@@ -134,3 +134,9 @@ The recognizer uses MediaPipe's 21-point hand landmark model. Each landmark has 
 A finger is "extended" when `mcp.y - tip.y > 0.05` (tip is clearly above the knuckle).
 A finger is "curled" when `tip.y - pip.y > 0.04` (tip is below the middle joint).
 The thumb is "extended" when `|tip.x - wrist.x| > |mcp.x - wrist.x|`.
+
+## Implementation Gotchas
+
+- `src/content/platforms/index.ts` patches `history.pushState` and `history.replaceState` to emit a custom `gesture:urlchange` event. This is necessary because YouTube, Instagram, and TikTok are SPA environments where navigation happens without a full page reload, so the extension must restart gesture tracking after route changes.
+
+- `src/content/mediapipe.ts` temporarily intercepts `Node.prototype.appendChild` during MediaPipe initialization. The `hands.js` loader dynamically injects script tags into the page DOM, which can trigger CSP violations and wrong URL resolution inside a content script. Intercepting `appendChild` ensures those scripts are loaded from the extension bundle and not injected into the host page.

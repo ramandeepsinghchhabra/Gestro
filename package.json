@@ -8,6 +8,7 @@
     "build": "tsx scripts/build.ts",
     "dev": "tsx scripts/build.ts --watch",
     "download-models": "tsx scripts/download-models.ts",
+    "test:accuracy": "tsx scripts/test-accuracy.ts",
     "prebuild": "npm run download-models"
   },
   "dependencies": {

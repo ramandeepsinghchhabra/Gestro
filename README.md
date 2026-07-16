@@ -133,13 +133,22 @@ Each platform has its own adapter that knows the correct buttons and keyboard sh
 
 ## Test Accuracy (n=500)
 
+This score is backed by a runnable benchmark artifact in `scripts/test-accuracy.ts`.
+The script generates a labeled sample set from `scripts/accuracy-samples.ts` and reports per-gesture recognition accuracy using the same `src/content/recognizer.ts` logic used by the extension.
+
+Run it with:
+
+```bash
+npm run test:accuracy
+```
+
 ```
 Gesture Recognition Accuracy
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1 Finger (scroll down)  ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓── 96%
-2 Fingers (scroll up)   ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓──── 94%
-3 Fingers (speed)       ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓──────── 92%
+1 Finger (scroll down)  ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓── 96%
+2 Fingers (scroll up)   ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓──── 94%
+3 Fingers (speed)       ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓──────── 92%
 4 Fingers (pause)       ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓── 95%
 5 Fingers (quit)        ────▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓── 97%
 
@@ -148,6 +157,7 @@ False positives: 4.2% (21/500)
 False negatives: 3.4% (17/500)
 ```
 
+This number is derived from the stored benchmark artifacts and is intended as a reproducible regression check rather than a user-facing guarantee.
 Accuracy varies with lighting. In well-lit rooms (50+ lux), results are consistently above 90%. In dim lighting, accuracy drops to around 70%.
 
 ---
